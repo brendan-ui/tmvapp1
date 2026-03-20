@@ -9,8 +9,8 @@ interface ScorecardRow {
   id: string
   owner_id: string
   owner_name: string | null
-  metric_name: string
-  target: number | null
+  measurable: string
+  goal: number | null
   actual: number | null
   week_of: string
   on_track: boolean | null
@@ -40,7 +40,7 @@ interface Issue {
   id: string
   title: string
   description: string | null
-  priority: number
+  priority: string
   status: string
   owner_name: string | null
   created_at: string
@@ -125,8 +125,8 @@ function ScorecardPanel({ data }: { data: ScorecardRow[] }) {
                 {rows.map((row) => (
                   <tr key={row.id}>
                     <td className="py-2 font-body text-sm text-navy">{row.owner_name ?? 'Unknown'}</td>
-                    <td className="py-2 font-body text-sm text-gray-600">{row.metric_name}</td>
-                    <td className="py-2 font-body text-sm text-gray-500 text-right">{row.target ?? '-'}</td>
+                    <td className="py-2 font-body text-sm text-gray-600">{row.measurable}</td>
+                    <td className="py-2 font-body text-sm text-gray-500 text-right">{row.goal ?? '-'}</td>
                     <td className="py-2 font-body text-sm text-navy text-right font-medium">{row.actual ?? '-'}</td>
                     <td className="py-2 text-center">
                       <span className={`inline-block w-3 h-3 rounded-full ${
@@ -151,10 +151,10 @@ function ScorecardPanel({ data }: { data: ScorecardRow[] }) {
 
 function RocksPanel({ data, canWrite }: { data: Rock[]; canWrite: boolean }) {
   const statusColors: Record<string, string> = {
-    on_track: 'bg-tmv-green/10 text-tmv-green',
-    off_track: 'bg-tmv-red/10 text-tmv-red',
-    complete: 'bg-navy/10 text-navy',
-    not_started: 'bg-gray-100 text-gray-500',
+    'on-track': 'bg-tmv-green/10 text-tmv-green',
+    'off-track': 'bg-tmv-red/10 text-tmv-red',
+    'complete': 'bg-navy/10 text-navy',
+    'dropped': 'bg-gray-100 text-gray-500',
   }
 
   return (
@@ -171,8 +171,8 @@ function RocksPanel({ data, canWrite }: { data: Rock[]; canWrite: boolean }) {
                 {rock.owner_name ?? 'Unassigned'} {rock.quarter ? `• ${rock.quarter}` : ''}
               </p>
             </div>
-            <span className={`ml-3 px-2 py-0.5 rounded-full font-body text-xs font-medium ${statusColors[rock.status] ?? statusColors.not_started}`}>
-              {rock.status.replace('_', ' ')}
+            <span className={`ml-3 px-2 py-0.5 rounded-full font-body text-xs font-medium ${statusColors[rock.status] ?? 'bg-gray-100 text-gray-500'}`}>
+              {rock.status}
             </span>
           </div>
         ))}
@@ -233,10 +233,11 @@ function TodosPanel({ data, canWrite, userId }: { data: Todo[]; canWrite: boolea
 }
 
 function IssuesPanel({ data, canWrite }: { data: Issue[]; canWrite: boolean }) {
-  const priorityColors: Record<number, string> = {
-    1: 'bg-tmv-red/10 text-tmv-red',
-    2: 'bg-tmv-amber/10 text-tmv-amber',
-    3: 'bg-gray-100 text-gray-500',
+  const priorityColors: Record<string, string> = {
+    critical: 'bg-tmv-red/10 text-tmv-red',
+    high: 'bg-tmv-red/10 text-tmv-red',
+    medium: 'bg-tmv-amber/10 text-tmv-amber',
+    low: 'bg-gray-100 text-gray-500',
   }
 
   return (
@@ -250,8 +251,8 @@ function IssuesPanel({ data, canWrite }: { data: Issue[]; canWrite: boolean }) {
             <div className="flex items-center justify-between">
               <p className="font-body text-sm font-medium text-navy">{issue.title}</p>
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full font-body text-xs font-medium ${priorityColors[issue.priority] ?? priorityColors[3]}`}>
-                  P{issue.priority}
+                <span className={`px-2 py-0.5 rounded-full font-body text-xs font-medium ${priorityColors[issue.priority] ?? priorityColors.medium}`}>
+                  {issue.priority}
                 </span>
                 <span className="px-2 py-0.5 rounded-full font-body text-xs font-medium bg-navy/5 text-navy capitalize">
                   {issue.status}

@@ -37,9 +37,9 @@ export default async function CashPage() {
   // Get outstanding invoices for AR aging
   const { data: invoiceData } = await supabase
     .from('xero_invoices')
-    .select('invoice_number, contact_customer, invoice_date, invoice_due_date, amount_due_home, invoice_status, total_amount_home')
+    .select('invoice_number, contact_customer, invoice_date, invoice_due_date, amount_due_in_home_currency, invoice_status, total_amount_in_home_currency')
     .in('invoice_status', ['AUTHORISED', 'SENT'])
-    .gt('amount_due_home', 0)
+    .gt('amount_due_in_home_currency', 0)
     .order('invoice_due_date', { ascending: true })
 
   // Bucket AR by aging
@@ -48,7 +48,7 @@ export default async function CashPage() {
 
   if (invoiceData) {
     for (const inv of invoiceData) {
-      const amountDue = inv.amount_due_home ?? 0
+      const amountDue = inv.amount_due_in_home_currency ?? 0
       const dueDate = inv.invoice_due_date
       if (!dueDate) continue
 
