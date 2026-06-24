@@ -87,6 +87,41 @@ label it `🔄 Refresh placements`, action **Open link**, paste the link.
 - *Vercel Hobby (free) plan* limits cron frequency; if twice-daily doesn't fire,
   upgrade to Pro or rely on the button + one daily run.
 
+## Step 5 — Dashboard login (Google, company-only)
+
+The branded dashboard at **`/dashboard`** is protected by Google sign-in
+restricted to `@themilvet.org`, so a shared link is useless to outsiders.
+This uses a **separate** Google credential from the service account in Step 2
+— an OAuth Client ID.
+
+1. In **console.cloud.google.com** (same project) → **APIs & Services →
+   OAuth consent screen**: choose **Internal** (Workspace only), fill the app
+   name (`TMV Dashboard`), save.
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID →
+   Web application.** Under **Authorized redirect URIs** add:
+   ```
+   https://YOUR-APP.vercel.app/api/auth/callback/google
+   ```
+   Create, then copy the **Client ID** and **Client secret**.
+3. Add these env vars in Vercel (then redeploy):
+
+   | Name | Value |
+   |------|-------|
+   | `GOOGLE_CLIENT_ID` | the OAuth client ID |
+   | `GOOGLE_CLIENT_SECRET` | the OAuth client secret |
+   | `NEXTAUTH_SECRET` | a long random string (`openssl rand -base64 32`) |
+   | `NEXTAUTH_URL` | `https://YOUR-APP.vercel.app` (no trailing slash) |
+   | `ALLOWED_EMAIL_DOMAIN` | `themilvet.org` |
+
+4. **In Notion, link to the dashboard** (don't iframe-embed it): add a button
+   or link to `https://YOUR-APP.vercel.app/dashboard`. Teammates click it, sign
+   in with their company Google account once, and see the live dashboard.
+   Anyone without an `@themilvet.org` account is blocked.
+
+> Why link instead of embed: browsers block login sessions inside another
+> site's iframe, so an embedded authenticated page won't stay signed in. A
+> link opens it first-party, where login works reliably.
+
 ## Safety
 - Reads the sheet **only** — never writes to it.
 - If the sheet returns fewer than 20 placements (a bad pull), the sync **skips

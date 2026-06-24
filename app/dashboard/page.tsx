@@ -1,5 +1,8 @@
+import { getServerSession } from 'next-auth/next'
 import { EB_Garamond, Poppins } from 'next/font/google'
+import { authOptions, ALLOWED_DOMAIN } from '@/lib/auth'
 import { fetchSignedOffers, GOALS, type Placement } from '@/lib/placements-sync'
+import SignInButton from './sign-in-button'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -31,20 +34,91 @@ function quarterRange(qy: string) {
   return `${MONTHS[s]} 1 – ${MONTHS[s + 2]} ${[31, 30, 30, 31][n - 1]}, ${qy.slice(0, 4)}`
 }
 
+function SignInScreen({ denied }: { denied: boolean }) {
+  return (
+    <main
+      className={`${serif.variable} ${sans.variable}`}
+      style={{
+        minHeight: '100vh',
+        margin: 0,
+        display: 'grid',
+        placeItems: 'center',
+        padding: 24,
+        fontFamily: 'var(--font-sans)',
+        color: C.cream,
+        background:
+          `radial-gradient(900px 500px at 50% -10%, rgba(201,169,110,.12), transparent 60%), linear-gradient(160deg, ${C.navyDarkest}, #161B33 55%, ${C.navyDarkest})`,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          textAlign: 'center',
+          background: 'linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02))',
+          border: '1px solid rgba(201,169,110,.2)',
+          borderRadius: 16,
+          padding: '40px 36px',
+          boxShadow: '0 18px 50px rgba(0,0,0,.34)',
+        }}
+      >
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            margin: '0 auto 18px',
+            border: `1.5px solid ${C.gold}`,
+            borderRadius: 11,
+            display: 'grid',
+            placeItems: 'center',
+            fontFamily: 'var(--font-serif)',
+            fontWeight: 700,
+            fontSize: 21,
+            color: C.gold,
+          }}
+        >
+          TMV
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: 24, color: C.white, margin: '0 0 6px' }}>
+          Candidate Delivery Dashboard
+        </h1>
+        <p style={{ color: C.blue, fontSize: 14, margin: '0 0 24px', lineHeight: 1.5 }}>
+          Sign in with your The Military Veteran Google account to continue.
+        </p>
+        {denied ? (
+          <p
+            style={{
+              color: '#f3c9c9',
+              background: 'rgba(199,80,80,.16)',
+              border: `1px solid ${C.red}`,
+              borderRadius: 8,
+              padding: '10px 12px',
+              fontSize: 13,
+              margin: '0 0 18px',
+            }}
+          >
+            That account isn&apos;t authorized. Use your <b>@{ALLOWED_DOMAIN}</b> company account.
+          </p>
+        ) : null}
+        <SignInButton />
+        <p style={{ color: C.navy, fontSize: 12, marginTop: 22 }}>
+          Access is restricted to @{ALLOWED_DOMAIN} accounts.
+        </p>
+      </div>
+    </main>
+  )
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
-  const key = typeof searchParams.key === 'string' ? searchParams.key : ''
-  const secret = process.env.PLACEMENTS_REFRESH_SECRET
-  if (!secret || key !== secret) {
-    return (
-      <main style={{ fontFamily: 'system-ui', padding: 48, color: '#fff', background: C.navyDarkest, minHeight: '100vh' }}>
-        <h1>Access key required</h1>
-        <p>Append <code>?key=YOUR_SECRET</code> to this URL to view the dashboard.</p>
-      </main>
-    )
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email?.toLowerCase() || ''
+  const authed = !!email && email.endsWith('@' + ALLOWED_DOMAIN)
+  if (!authed) {
+    return <SignInScreen denied={typeof searchParams.error === 'string'} />
   }
 
   let placements: Placement[] = []
