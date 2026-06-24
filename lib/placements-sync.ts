@@ -26,7 +26,7 @@ const NOTION_DB_ID = process.env.NOTION_PLACEMENTS_DB_ID || 'cc62dc691dde44bfbaf
 const NOTION_PAGE_ID = process.env.NOTION_DASHBOARD_PAGE_ID || '3896130c-d1c1-81af-b7c4-f275b13d6d31'
 
 // Quarterly goals (base, stretch). Add a row here each quarter.
-const GOALS: Record<string, { goal: number; stretch: number }> = {
+export const GOALS: Record<string, { goal: number; stretch: number }> = {
   '2026 Q2': { goal: 800_000, stretch: 880_000 },
   '2026 Q3': { goal: 1_200_000, stretch: 1_320_000 },
 }

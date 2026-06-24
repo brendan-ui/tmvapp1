@@ -2,9 +2,12 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // API routes authenticate themselves (e.g. the placements refresh endpoint),
-  // so they must not go through the login-redirect middleware.
-  if (request.nextUrl.pathname.startsWith('/api')) {
+  // API routes and the embeddable dashboard authenticate themselves
+  // (own secret key), so they must not go through the login-redirect middleware.
+  if (
+    request.nextUrl.pathname.startsWith('/api') ||
+    request.nextUrl.pathname.startsWith('/dashboard')
+  ) {
     return NextResponse.next({ request })
   }
 
