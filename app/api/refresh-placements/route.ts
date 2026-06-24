@@ -7,7 +7,8 @@ export const maxDuration = 60
 const NOTION_PAGE_URL = 'https://www.notion.so/3896130cd1c181afb7c4f275b13d6d31'
 
 /**
- * Refreshes the Candidate Delivery Dashboard from the Signed Offers tab.
+ * Refreshes the Candidate Delivery Dashboard from the Signed Offers tab
+ * (read directly from Google Sheets via a service account).
  *
  * Two callers:
  *   - The "🔄 Refresh" button on the Notion page → opens this URL with ?key=<secret>.

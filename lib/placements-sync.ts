@@ -14,12 +14,14 @@
  * Only the fields the delivery team asked for are synced — NO commission data.
  */
 
-const COUPLER_BASE = 'https://api.coupler.io/v1/dataflows'
+import { GoogleAuth } from 'google-auth-library'
+
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VERSION = '2022-06-28'
 
 // IDs default to the live dashboard created for TMV; override via env if needed.
-const DATAFLOW_ID = process.env.SIGNED_OFFERS_DATAFLOW_ID || '6951d439-262a-439c-8d85-77caee1c659d'
+const SHEET_ID = process.env.SIGNED_OFFERS_SHEET_ID || '15tl16CvD3Vy5ls0L4Yc2NffsZGBcjUZLml1PzndS8c4'
+const SHEET_TAB = process.env.SIGNED_OFFERS_TAB || 'Signed Offers'
 const NOTION_DB_ID = process.env.NOTION_PLACEMENTS_DB_ID || 'cc62dc691dde44bfbaf91d5b7f2217e8'
 const NOTION_PAGE_ID = process.env.NOTION_DASHBOARD_PAGE_ID || '3896130c-d1c1-81af-b7c4-f275b13d6d31'
 
@@ -111,37 +113,58 @@ function quarterOf(iso: string | null): string | null {
   return `${y} Q${Math.floor((m - 1) / 3) + 1}`
 }
 
-// ---------- 1. read Signed Offers from Coupler ----------
+// ---------- 1. read the Signed Offers tab from Google Sheets ----------
+
+// Column positions in the "Signed Offers" tab (0-based):
+//   0 Timestamp · 2 Client · 4 Candidate · 6 Base · 7 Bonus · 8 Other ·
+//   9 Total Comp for Fee · 11 Sourcer · 12 Recruiter · 19 Sales Credit ·
+//   25 Total First-Year Comp · 28 Billable Total (Column AC = Deal Value)
+
+async function getAccessToken(): Promise<string> {
+  const auth = new GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  })
+  const client = await auth.getClient()
+  const { token } = await client.getAccessToken()
+  if (!token) throw new Error('Could not obtain a Google access token (check service account env vars)')
+  return token
+}
 
 export async function fetchSignedOffers(): Promise<Placement[]> {
-  const res = await fetch(`${COUPLER_BASE}/${DATAFLOW_ID}/data`, {
-    headers: { Authorization: `Bearer ${process.env.COUPLER_API_KEY}` },
-    cache: 'no-store',
-  })
-  if (!res.ok) throw new Error(`Coupler API error: ${res.status} ${res.statusText}`)
-  const json = (await res.json()) as { data: Record<string, unknown>[] }
+  const token = await getAccessToken()
+  const range = encodeURIComponent(`${SHEET_TAB}!A1:AS5000`)
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}` +
+    `?valueRenderOption=FORMATTED_VALUE`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+  if (!res.ok) throw new Error(`Google Sheets API ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  const json = (await res.json()) as { values?: unknown[][] }
+  const rows = json.values || []
 
   const out: Placement[] = []
-  for (const row of json.data) {
-    const sheet = asStr(row.col_0)
-    if (!sheet || !sheet.includes('Signed Offers')) continue
-
-    const candidate = asStr(row.col_38)
-    const client = asStr(row.col_36)
-    const offerDate = toIsoDate(row.col_1)
+  for (let i = 1; i < rows.length; i++) {
+    // skip header row
+    const r = rows[i]
+    const candidate = asStr(r[4])
+    const client = asStr(r[2])
+    const offerDate = toIsoDate(r[0])
     if (!candidate && !client && !offerDate) continue // blank/spacer row
 
     out.push({
       candidate: candidate || '(no name)',
       client: client || '',
-      recruiter: person(row.col_46, 'NO RECRUITER'),
-      sourcer: person(row.col_45, 'NO SOURC'),
-      salesRep: person(row.col_52, 'NO ', 'COMMISSION'),
-      dealValue: asNum(row.col_60), // Billable Total (Column AC)
-      base: asNum(row.col_40),
-      bonus: asNum(row.col_41),
-      other: asNum(row.col_42),
-      totalComp: asNum(row.col_57) ?? asNum(row.col_43),
+      recruiter: person(r[12], 'NO RECRUITER'),
+      sourcer: person(r[11], 'NO SOURC'),
+      salesRep: person(r[19], 'NO ', 'COMMISSION'),
+      dealValue: asNum(r[28]), // Billable Total (Column AC)
+      base: asNum(r[6]),
+      bonus: asNum(r[7]),
+      other: asNum(r[8]),
+      totalComp: asNum(r[25]) ?? asNum(r[9]),
       offerDate,
       quarter: quarterOf(offerDate),
     })
